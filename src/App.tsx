@@ -13,6 +13,7 @@ import {
 } from "@metamask-private/delegator-core-viem";
 import { createGuestSignatoryFactory } from "./signers/guestSigner";
 import { createInjectedProviderSignatoryFactory } from "./signers/injectedSigner";
+import { createWeb3AuthSignatoryFactory } from "./signers/web3authSigner";
 import {
   delegation,
   redeemDelegation,
@@ -27,6 +28,8 @@ function App() {
   const [dAppOwnerSmartAccount, setDappOwnerSmartAccount] =
     useState<MetaMaskSmartAccount<Implementation> | null>(null);
   const [isDelegatedToGuestAccount, setIsDelegatedToGuestAccount] =
+    useState<boolean>(false);
+  const [isDelegatedToExternalAccount, setIsDelegatedToExternalAccount] =
     useState<boolean>(false);
 
   useEffect(() => {
@@ -59,6 +62,19 @@ function App() {
     setInjectedAccount(signatory);
   };
 
+  const createWeb3AuthAccount = async () => {
+    const web3Auth = createWeb3AuthSignatoryFactory({
+      chain: lineaSepolia,
+      web3AuthClientId: import.meta.env.VITE_WEB3AUTH_CLIENT_ID,
+      web3AuthNetwork: import.meta.env.VITE_WEB3AUTH_NETWORK,
+      rpcUrl: import.meta.env.VITE_RPC_URL,
+    });
+    const { owner, signatory } = await web3Auth.login();
+    console.log("Web3Auth Account:", { owner, signatory });
+    await delegation(guestAccount!, owner, lineaSepolia);
+    setInjectedAccount(signatory);
+  };
+
   return (
     <>
       <div>
@@ -72,7 +88,8 @@ function App() {
       <h1>Vite + React</h1>
       {!guestAccount ? (
         <div>
-          <div>Gator NFT</div>
+          <div>Gator NFT Demo</div>
+          <br />
           <button onClick={createGuestAccount}>Create Guest Account</button>
         </div>
       ) : (
@@ -91,32 +108,39 @@ function App() {
               Delegate to Guest Account
             </button>
           )}
-          {isDelegatedToGuestAccount && (
+          {isDelegatedToGuestAccount && !isDelegatedToExternalAccount && (
             <button
               onClick={async () => {
                 await createInjectedAccount();
+                setIsDelegatedToExternalAccount(true);
               }}
             >
               Save to Metamask
             </button>
           )}
-          {injectedAccount && (
+          {isDelegatedToGuestAccount && !isDelegatedToExternalAccount && (
             <button
               onClick={async () => {
-                await redeemDelegation(injectedAccount, lineaSepolia);
+                await createWeb3AuthAccount();
+                setIsDelegatedToExternalAccount(true);
               }}
             >
-              Mint NFT
+              Save to Web3Auth
             </button>
           )}
-          <p>
-            Edit <code>src/App.tsx</code> and save to test HMR
-          </p>
+          {injectedAccount && (
+            <>
+              <button
+                onClick={async () => {
+                  await redeemDelegation(injectedAccount, lineaSepolia);
+                }}
+              >
+                Mint NFT
+              </button>
+            </>
+          )}
         </div>
       )}
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
     </>
   );
 }

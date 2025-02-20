@@ -20,7 +20,7 @@ export const storeDelegation = async (delegation: DelegationStruct) => {
     return value;
   });
 
-  console.log("Delegation Json", json);
+  // console.log("Delegation Json", json);
 
   localStorage.setItem(delegation.delegate, json);
 };
